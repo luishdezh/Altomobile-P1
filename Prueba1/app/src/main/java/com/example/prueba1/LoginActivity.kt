@@ -67,8 +67,8 @@ class LoginActivity : AppCompatActivity() {
     private fun userStatus() {
         val accessToken = AccessToken.getCurrentAccessToken()
         val isLoggedIn = accessToken != null && !accessToken.isExpired
-        if(isLoggedIn) {
-           // startList()
+        if(isLoggedIn && AccessToken.getCurrentAccessToken().permissions.contains("email")) {
+            startList()
         }
     }
 
