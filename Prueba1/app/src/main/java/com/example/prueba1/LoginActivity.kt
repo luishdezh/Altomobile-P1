@@ -13,8 +13,8 @@ import com.facebook.AccessToken
 import com.facebook.login.LoginManager
 import com.facebook.login.widget.LoginButton
 import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.uiThread
 import java.util.*
-
 
 class LoginActivity : AppCompatActivity() {
 
@@ -24,39 +24,46 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
+
+        userStatus()
+
         loginButton = findViewById(R.id.login_button)
 
-            loginButton.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
+        loginButton.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
 
-                override fun onSuccess(loginResult: LoginResult) {
-                    LoginManager.getInstance().logInWithReadPermissions(
-                        this@LoginActivity,
-                        listOf("email")
-                    )
-                    var emailSet = AccessToken.getCurrentAccessToken().permissions.contains("email")
-                    if(emailSet) {
-                        startList()
-                    }
+            override fun onSuccess(loginResult: LoginResult) {
+                LoginManager.getInstance().logInWithReadPermissions(
+                    this@LoginActivity,
+                    listOf("email")
+                )
+                var emailSet = AccessToken.getCurrentAccessToken().permissions.contains("email")
+                if (emailSet) {
+                    startList()
                 }
+            }
 
-                override fun onCancel() {
-                    val toast = Toast.makeText(this@LoginActivity, "You must accept", Toast.LENGTH_SHORT)
-                    toast.show()
-                    LoginManager.getInstance().logOut()
-                }
+            override fun onCancel() {
+                val toast =
+                    Toast.makeText(this@LoginActivity, "You must accept", Toast.LENGTH_SHORT)
+                toast.show()
+                LoginManager.getInstance().logOut()
+            }
 
-                override fun onError(e: FacebookException) {
-                    val toast = Toast.makeText(this@LoginActivity, "ERROR", Toast.LENGTH_SHORT)
-                    toast.show()
-                }
-            })
-
-
+            override fun onError(e: FacebookException) {
+                val toast = Toast.makeText(this@LoginActivity, "ERROR", Toast.LENGTH_SHORT)
+                toast.show()
+            }
+        })
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         callbackManager.onActivityResult(requestCode, resultCode, data)
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+  override fun onStart() {
+        super.onStart()
+        userStatus()
     }
 
     override fun onResume() {
@@ -69,6 +76,8 @@ class LoginActivity : AppCompatActivity() {
         val isLoggedIn = accessToken != null && !accessToken.isExpired
         if(isLoggedIn && AccessToken.getCurrentAccessToken().permissions.contains("email")) {
             startList()
+        } else {
+            LoginManager.getInstance().logOut()
         }
     }
 

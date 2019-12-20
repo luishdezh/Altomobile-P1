@@ -5,7 +5,6 @@ import org.jetbrains.anko.uiThread
 
 class MainPresenter (private val view: MainContract.View) : MainContract.Presenter {
     override fun fetch(response: Int) {
-        view.showProgress()
         doAsync {
             Thread.sleep(4500)
             if (response==1) {

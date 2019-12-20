@@ -13,6 +13,7 @@ import android.widget.Toast
 import android.widget.ViewAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.facebook.login.LoginManager
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.uiThread
 import org.json.JSONArray
@@ -20,16 +21,15 @@ import org.json.JSONException
 
 class MainActivity : AppCompatActivity(),  MainContract.View{
 
-
-
+    private lateinit var recyclerView : RecyclerView
     private lateinit var switcher: ViewAnimator
     private lateinit var button: Button
-    private lateinit var presenter: MainContract.Presenter
+    private lateinit var logOut: Button
     private val client = OkHttpClient()
+    private lateinit var presenter: MainContract.Presenter
     private val url = "https://flavioruben.herokuapp.com/data.json"
-    private var mResponse: Int = 1
+    private var mResponse: Int = 0
     var animals = ArrayList<ListItem>()
-    lateinit var toast: Toast
 
     companion object {
         const val SHOW_LOAD = 0
@@ -43,21 +43,30 @@ class MainActivity : AppCompatActivity(),  MainContract.View{
 
         switcher = findViewById(R.id.switcher)
         button = findViewById(R.id.button)
+        logOut = findViewById(R.id.log_out)
+        recyclerView = findViewById(R.id.main_list)
 
-
-        var recyclerView = findViewById<RecyclerView>(R.id.main_list)
-        val header = Header()
-        animals.add(header)
-        toast = Toast.makeText(this, "Sin conexión a Internet", Toast.LENGTH_SHORT)
-        run(url)
-        recyclerView.adapter = AdapterAnimalArray(animals)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-
-        presenter = MainPresenter(this@MainActivity)
-        presenter.fetch(mResponse)
-
+        logOut.setOnClickListener {
+            LoginManager.getInstance().logOut()
+            finish()
+        }
         button.setOnClickListener{
             restart()
+        }
+
+        val header = Header()
+        animals.add(header)
+
+        run(url)
+
+        do {
+            showProgress()
+        } while(mResponse == 0)
+
+        if (mResponse == 1){
+            showList()
+        } else {
+            showNoList()
         }
 
     }
@@ -82,48 +91,40 @@ class MainActivity : AppCompatActivity(),  MainContract.View{
 
     private fun run(url: String){
 
-            val request = Request.Builder()
+        val request = Request.Builder()
                 .url(url)
                 .header("Accept", "application/json")
                 .header("Content-Type", "application/json")
                 .build()
 
-            client.newCall(request).enqueue(object : Callback {
-                @Throws(IOException::class)
-                override fun onFailure(call: Call, e: IOException) {
-                    doAsync {
-                        uiThread{
-                            mResponse = SHOW_NO_LIST
-                            presenter.fetch(mResponse)
-                        }
-                    }
+        client.newCall(request).enqueue(object : Callback {
+            @Throws(IOException::class)
+            override fun onFailure(call: Call, e: IOException) {
+                mResponse = 2
+                showNoList()
+            }
+
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                val data = response.body?.string().toString()
+                val json = JSONArray(data)
+                for (i in 0 until json.length()) {
+                    val obj = json.getJSONObject(i)
+                    val animal = Animal(
+                        obj.getString("name"),
+                        Integer.parseInt(obj.getString("life")),
+                        Integer.parseInt(obj.getString("id")),
+                        obj.getString("pictureURL")
+                    )
+                    animals.add(animal)
                 }
-
-                @Throws(IOException::class)
-                override fun onResponse(call: Call, response: Response) {
-                    doAsync {
-                        uiThread{
-                            mResponse = SHOW_LIST
-                        }
-                        val data = response.body?.string().toString()
-                        val json = JSONArray(data)
-
-                        for (i in 0 until json.length()) {
-                            val obj = json.getJSONObject(i)
-                            val animal = Animal(
-                                obj.getString("name"),
-                                Integer.parseInt(obj.getString("life")),
-                                Integer.parseInt(obj.getString("id")),
-                                obj.getString("pictureURL")
-                            )
-                            animals.add(animal)
-                        }
-                    }
-
-                }
-            })
+                recyclerView.adapter = AdapterAnimalArray(animals)
+                recyclerView.layoutManager = LinearLayoutManager(this@MainActivity)
+                mResponse = 1
+                Log.d("MyTag",mResponse.toString())
+            }
+        })
     }
-
 }
 
 class Animal : ListItem{
